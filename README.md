@@ -7,7 +7,6 @@ Este repositorio contiene el código fuente de la Data Management API, diseñada
 2. [Instalación](#instalación)
 3. [Configuración de la Base de Datos](#configuración-de-la-base-de-datos)
 4. [Ejecución del Proyecto](#ejecución-del-proyecto)
-5. [Inicialización de Datos (Seed)](#inicialización-de-datos-seed)
 6. [Scripts Disponibles](#scripts-disponibles)
 7. [Dependencias Principales](#dependencias-principales)
 
