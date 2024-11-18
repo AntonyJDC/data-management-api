@@ -79,5 +79,17 @@ services:
       - READ_MS_URL=http://read-service:3003
       - DELETE_MS_URL=http://delete-service:3002
 
+  logs-service:
+    container_name: logs-service
+    build: ./logs-service
+    ports:
+      - "3005:3005"
+    depends_on:
+      - mongodb
+    volumes:
+      - ./logs-service:/app
+      - /app/node_modules
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/datamanagement
 volumes:
   mongo-data:
