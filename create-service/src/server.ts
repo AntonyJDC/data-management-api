@@ -1,34 +1,86 @@
-import { Request, Response } from "express";
-import cors from "cors";
-import express from "express";
-import connectDB from "./database/db";  // Importa la función de conexión
-
-// MIDDLEWARES
+import express, { Request, Response } from 'express';
+import cors from 'cors';
+import mongoose from 'mongoose';
+import User from './models/person.model';
+import connectDB from './database/db';
+// Initialize Express app
 const app = express();
 
+// Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Conectar a la base de datos
-connectDB();  // Llama a la función para conectar a MongoDB
+// Connect to MongoDB
+connectDB();
 
-// ROUTES
-app.get("/create", (req: Request, res: Response) => {
-  // Lógica para leer datos de la base de datos
-  res.send("Datos leídos correctamente");
+// Create User
+app.post('/', async (req: Request, res: Response) => {
+  const {
+    idType,
+    idNumber,
+    firstName,
+    middleName,
+    lastName,
+    birthDate,
+    gender,
+    email,
+    phone,
+    photo,
+  } = req.body;
+
+  try {
+    if (mongoose.connection.readyState === 0) {
+      await connectDB();
+    }
+
+    const newUser = new User({
+      idType,
+      idNumber,
+      firstName,
+      middleName,
+      lastName,
+      birthDate,
+      gender,
+      email,
+      phone,
+      photo,
+    });
+
+    await newUser.save();
+
+    res.status(201).json({
+      message: 'User created successfully.',
+      data: newUser,
+    });
+  } catch (error: any) {
+    console.error('Error creating user:', error);
+
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        message: 'Validation error.',
+        errors: error.errors,
+      });
+    }
+
+    if (error.code === 11000) {
+      return res.status(409).json({
+        message: 'Duplicate entry: ID Number already exists.',
+      });
+    }
+
+    res.status(500).json({ message: 'Internal server error.' });
+  }
 });
 
-// FALLBACKS
-function routeNotFound(request: Request, response: Response) {
-  response.status(404).json({
-    message: "Route not found.",
-  });
-}
+// Fallback for undefined routes
+app.use((req: Request, res: Response) => {
+  res.status(404).json({ message: 'Not found.' });
+});
 
-app.use(routeNotFound);
+// Start server
 
-// START SERVER
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`Read-Service listening on port ${PORT}.`);
+  console.log(`Server is running on port ${PORT}.`);
 });
