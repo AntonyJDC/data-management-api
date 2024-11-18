@@ -3,6 +3,8 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import User from './models/person.model';
 import connectDB from './database/db';
+import Log from './models/logs.model';
+
 // Initialize Express app
 const app = express();
 
@@ -13,6 +15,15 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Connect to MongoDB
 connectDB();
+
+async function saveLog(action: string, idNumber?: string, message?: string, meta?: Record<string, any>) {
+  try {
+    const newLog = new Log({ action, idNumber, message, meta });
+    await newLog.save();
+  } catch (err) {
+    console.error('Error saving log to database:', err);
+  }
+}
 
 // Create User
 app.post('/', async (req: Request, res: Response) => {
@@ -53,6 +64,7 @@ app.post('/', async (req: Request, res: Response) => {
       message: 'User created successfully.',
       data: newUser,
     });
+    await saveLog('create', idNumber, `User created successfully.`);
   } catch (error: any) {
     console.error('Error creating user:', error);
 
