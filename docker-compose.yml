@@ -1,70 +1,83 @@
-version: '3.8'
-
+name: data-management
 services:
   mongodb:
-    image: mongo:latest
+    image: mongo
+    container_name: mongodb
     environment:
       MONGO_INITDB_DATABASE: datamanagement
     ports:
       - "27017:27017"
     volumes:  
-      - mongo-data:/data/db
-
-  read-service:
-    build: ./read-service
-    ports:
-      - "3003:3003"
-    environment:
-      - DB_HOST=mongodb
-      - DB_PORT=27017
-      - DB_NAME=datamanagement
-    depends_on:
-      - mongodb
-    volumes:
-      - ./read-service:/app
-      - /app/node_modules
+      - ./data:/data/db
 
   create-service:
+    container_name: create-service
     build: ./create-service
     ports:
       - "3001:3001"
-    environment:
-      - DB_HOST=mongodb
-      - DB_PORT=27017
-      - DB_NAME=datamanagement
     depends_on:
       - mongodb
     volumes:
       - ./create-service:/app
       - /app/node_modules
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/datamanagement
 
   delete-service:
+    container_name: delete-service
     build: ./delete-service
     ports:
       - "3002:3002"
-    environment:
-      - DB_HOST=mongodb
-      - DB_PORT=27017
-      - DB_NAME=datamanagement
     depends_on:
       - mongodb
     volumes:
       - ./delete-service:/app
       - /app/node_modules
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/datamanagement
+
+  read-service:
+    container_name: read-service
+    build: ./read-service
+    ports:
+      - "3003:3003"
+    depends_on:
+      - mongodb
+    volumes:
+      - ./read-service:/app
+      - /app/node_modules
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/datamanagement
 
   update-service:
+    container_name: update-service
     build: ./update-service
     ports:
       - "3004:3004"
-    environment:
-      - DB_HOST=mongodb
-      - DB_PORT=27017
-      - DB_NAME=datamanagement
     depends_on:
       - mongodb
     volumes:
       - ./update-service:/app
       - /app/node_modules
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/datamanagement
+
+  api-gateway:
+    container_name: api-gateway
+    build: ./api-gateway
+    ports:
+      - "3000:3000"
+    depends_on:
+      - create-service
+      - delete-service
+      - read-service
+      - update-service
+    environment:
+      - PORT=3000
+      - CREATE_MS_URL=http://create-service:3001
+      - UPDATE_MS_URL=http://update-service:3004
+      - READ_MS_URL=http://read-service:3003
+      - DELETE_MS_URL=http://delete-service:3002
 
 volumes:
   mongo-data:
