@@ -21,12 +21,14 @@ const createServiceUrl = process.env.CREATE_MS_URL || 'http://create-service:300
 const readServiceUrl = process.env.READ_MS_URL || 'http://read-service:3003';
 const updateServiceUrl = process.env.UPDATE_MS_URL || 'http://update-service:3004';
 const deleteServiceUrl = process.env.DELETE_MS_URL || 'http://delete-service:3002';
+const logsServiceUrl = process.env.LOGS_MS_URL || 'http://logs-service:3005';
 
 // Rutas con proxys configurados
 app.use('/api/create', createProxy('Create Service', createServiceUrl));
-app.use('/api', createProxy('Read Service', readServiceUrl));
-app.use('/api', createProxy('Update Service', updateServiceUrl));
-app.use('/api', createProxy('Delete Service', deleteServiceUrl));
+app.use('/api/read', createProxy('Read Service', readServiceUrl));
+app.use('/api/update', createProxy('Update Service', updateServiceUrl));
+app.use('/api/delete', createProxy('Delete Service', deleteServiceUrl));
+app.use('/api/logs', createProxy('Logs Service', logsServiceUrl));
 
 // Iniciar el servidor
 const PORT = process.env.PORT || 3000;
