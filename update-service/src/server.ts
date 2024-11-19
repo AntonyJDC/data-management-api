@@ -1,34 +1,105 @@
-import { Request, Response } from "express";
-import cors from "cors";
-import express from "express";
-import connectDB from "./database/db";  // Importa la función de conexión
+import express, { Request, Response } from 'express';
+import cors from 'cors';
+import mongoose from 'mongoose';
+import User from './models/person.model';
+import connectDB from './database/db';
+import Log from './models/logs.model';
 
-// MIDDLEWARES
+// Initialize Express app
 const app = express();
 
+// Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Conectar a la base de datos
-connectDB();  // Llama a la función para conectar a MongoDB
+// Connect to MongoDB
+connectDB();
 
-// ROUTES
-app.get("/read", (req: Request, res: Response) => {
-  // Lógica para leer datos de la base de datos
-  res.send("Datos leídos correctamente");
-});
-
-// FALLBACKS
-function routeNotFound(request: Request, response: Response) {
-  response.status(404).json({
-    message: "Route not found.",
-  });
+async function saveLog(action: string, idNumber?: string, message?: string, meta?: Record<string, any>) {
+  try {
+    const newLog = new Log({ action, idNumber, message, meta });
+    await newLog.save();
+  } catch (err) {
+    console.error('Error saving log to database:', err);
+  }
 }
 
-app.use(routeNotFound);
+// Create User
+app.put('/:idNumber', async (req: Request, res: Response) => {
+  const { id } = req.params;
 
-// START SERVER
-const PORT = 3004;
+  const {
+    idType,
+    idNumber,
+    firstName,
+    middleName,
+    lastName,
+    birthDate,
+    gender,
+    email,
+    phone,
+    photo,
+  } = req.body;
+
+  try {
+    // Ensure user exists and update
+    const updatedUser = await User.findOneAndUpdate(
+      { id },
+      {
+        idType,
+        idNumber,
+        firstName,
+        middleName,
+        lastName,
+        birthDate,
+        gender,
+        email,
+        phone,
+        photo,
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    res.status(200).json({
+      message: 'User updated successfully.',
+      data: updatedUser,
+    });
+
+    await saveLog('update', idNumber, `User updated successfully.`);
+  } catch (error: any) {
+    console.error('Error updating user:', error);
+
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        message: 'Validation error.',
+        errors: error.errors,
+      });
+    }
+
+    if (error.code === 11000) {
+      return res.status(409).json({
+        message: 'Duplicate entry: ID Number already exists.',
+      });
+    }
+
+    res.status(500).json({ message: 'Internal server error.', error });
+  }
+});
+
+
+// Fallback for undefined routes
+app.use((req: Request, res: Response) => {
+  res.status(404).json({ message: 'Not found.' });
+});
+
+// Start server
+
+const PORT = process.env.PORT || 3004;
 app.listen(PORT, () => {
-  console.log(`Read-Service listening on port ${PORT}.`);
+  console.log(`Server is running on port ${PORT}.`);
 });
