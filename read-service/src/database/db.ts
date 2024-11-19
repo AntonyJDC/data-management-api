@@ -1,12 +1,12 @@
 import mongoose from 'mongoose';
 
-const dbHost = process.env.DB_HOST || 'localhost';
-const dbPort = process.env.DB_PORT || '27017';
-const dbName = process.env.DB_NAME || 'datamanagement';
-
 const connectDB = async () => {
   try {
-    await mongoose.connect(`mongodb://${dbHost}:${dbPort}/${dbName}`);
+    const mongoUri = process.env.MONGODB_URI;
+    if (!mongoUri) {
+      throw new Error('MONGODB_URI is not defined');
+    }
+    await mongoose.connect(mongoUri);
     console.log('Conexión a MongoDB exitosa');
   } catch (error) {
     console.error('Error conectando a MongoDB:', error);
