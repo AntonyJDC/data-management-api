@@ -18,12 +18,11 @@ connectDB();
 
 // Query logs
 app.get('/', async (req: Request, res: Response) => {
-  const { level, idNumber, startDate, endDate, action } = req.query;
+  const { idNumber, startDate, endDate, action } = req.query;
 
   try {
     // Build query
     const query: any = {};
-    if (level) query.level = level;
     if (idNumber) query.idNumber = idNumber;
     if (action) query.action = action;
     if (startDate || endDate) {
