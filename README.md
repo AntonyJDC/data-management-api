@@ -9,6 +9,7 @@ Este repositorio contiene el código fuente de la Data Management API, diseñada
 4. [Ejecución del Proyecto](#ejecución-del-proyecto)
 6. [Scripts Disponibles](#scripts-disponibles)
 7. [Dependencias Principales](#dependencias-principales)
+8. [Novedades](#novedades)
 
 ## Requerimientos
 - Docker
@@ -37,76 +38,102 @@ docker-compose up --build
 El archivo `docker-compose.yml` configura el siguiente servicio:
 
 ```yaml
-version: '3.8'
-
+name: data-management
 services:
   mongodb:
-    image: mongo:latest
+    image: mongo
+    container_name: mongodb
     environment:
       MONGO_INITDB_DATABASE: datamanagement
     ports:
       - "27017:27017"
     volumes:  
-      - mongo-data:/data/db
-
-  read-service:
-    build: ./read-service
-    ports:
-      - "3003:3003"
-    environment:
-      - DB_HOST=mongodb
-      - DB_PORT=27017
-      - DB_NAME=datamanagement
-    depends_on:
-      - mongodb
-    volumes:
-      - ./read-service:/app
-      - /app/node_modules
+      - ./data:/data/db
 
   create-service:
+    container_name: create-service
     build: ./create-service
     ports:
       - "3001:3001"
-    environment:
-      - DB_HOST=mongodb
-      - DB_PORT=27017
-      - DB_NAME=datamanagement
     depends_on:
       - mongodb
     volumes:
       - ./create-service:/app
       - /app/node_modules
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/datamanagement
 
   delete-service:
+    container_name: delete-service
     build: ./delete-service
     ports:
       - "3002:3002"
-    environment:
-      - DB_HOST=mongodb
-      - DB_PORT=27017
-      - DB_NAME=datamanagement
     depends_on:
       - mongodb
     volumes:
       - ./delete-service:/app
       - /app/node_modules
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/datamanagement
+
+  read-service:
+    container_name: read-service
+    build: ./read-service
+    ports:
+      - "3003:3003"
+    depends_on:
+      - mongodb
+    volumes:
+      - ./read-service:/app
+      - /app/node_modules
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/datamanagement
 
   update-service:
+    container_name: update-service
     build: ./update-service
     ports:
       - "3004:3004"
-    environment:
-      - DB_HOST=mongodb
-      - DB_PORT=27017
-      - DB_NAME=datamanagement
     depends_on:
       - mongodb
     volumes:
       - ./update-service:/app
       - /app/node_modules
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/datamanagement
 
+  api-gateway:
+    container_name: api-gateway
+    build: ./api-gateway
+    ports:
+      - "3000:3000"
+    depends_on:
+      - create-service
+      - delete-service
+      - read-service
+      - update-service
+    environment:
+      - PORT=3000
+      - CREATE_MS_URL=http://create-service:3001
+      - UPDATE_MS_URL=http://update-service:3004
+      - READ_MS_URL=http://read-service:3003
+      - DELETE_MS_URL=http://delete-service:3002
+
+  logs-service:
+    container_name: logs-service
+    build: ./logs-service
+    ports:
+      - "3005:3005"
+    depends_on:
+      - mongodb
+    volumes:
+      - ./logs-service:/app
+      - /app/node_modules
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/datamanagement
 volumes:
   mongo-data:
+
 ```
 
 ## Configuración de la Base de Datos
@@ -133,4 +160,29 @@ docker-compose up
 - [Docker](https://www.docker.com/)
 - [MongoDB](https://www.mongodb.com/)
 
+## Novedades
+
+1. **Implementación de Logs**
+
+  Se han incorporado registros detallados (logs) en las siguientes operaciones:
+
+  - Creación de usuario: Registra la información relevante de cada usuario creado.
+  
+  - Edición de usuario: Documenta los cambios realizados al usuario, incluyendo qué campos fueron modificados.
+  
+  - Eliminación de usuario: Crea un log de cada usuario eliminado para auditoría.
+  
+  - Consulta de usuario: Mantiene un registro de cada consulta realizada sobre los datos de los usuarios.
+
+Estos logs permiten un seguimiento más detallado y transparente de las actividades realizadas en el sistema.
+
+2. **Incorporación de API Gateway**
+
+  Se ha implementado un API Gateway para centralizar los microservicios y gestionar todas las solicitudes mediante una sola ruta. Beneficios:
+
+  - Centralización: Facilita el acceso a los diferentes microservicios desde una única URL.
+  
+  - Seguridad: Mejora el control sobre las solicitudes y respuestas.
+  
+  - Escalabilidad: Permite manejar un mayor volumen de peticiones con menor complejidad.
 
