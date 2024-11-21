@@ -27,11 +27,11 @@ async function saveLog(action: string, idNumber?: string, message?: string, meta
 
 // Create User
 app.put('/:idNumber', async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { idNumber } = req.params; // Usar idNumber de la ruta
 
   const {
     idType,
-    idNumber,
+    newIdNumber,
     firstName,
     middleName,
     lastName,
@@ -43,12 +43,22 @@ app.put('/:idNumber', async (req: Request, res: Response) => {
   } = req.body;
 
   try {
-    // Ensure user exists and update
+    // Validar si el nuevo idNumber ya existe y no pertenece al usuario actual
+    if (newIdNumber && newIdNumber !== idNumber) {
+      const userExists = await User.exists({ idNumber: newIdNumber });
+      if (userExists) {
+        return res.status(409).json({
+          message: 'Duplicate entry: ID Number already exists for another user.',
+        });
+      }
+    }
+
+    // Actualizar el usuario
     const updatedUser = await User.findOneAndUpdate(
-      { id },
+      { idNumber }, // Buscar por el idNumber actual
       {
         idType,
-        idNumber,
+        idNumber: newIdNumber || idNumber, // Actualizar idNumber si hay uno nuevo
         firstName,
         middleName,
         lastName,
@@ -58,7 +68,7 @@ app.put('/:idNumber', async (req: Request, res: Response) => {
         phone,
         photo,
       },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true } // Devuelve el documento actualizado
     );
 
     if (!updatedUser) {
@@ -70,7 +80,8 @@ app.put('/:idNumber', async (req: Request, res: Response) => {
       data: updatedUser,
     });
 
-    await saveLog('update', idNumber, `User updated successfully.`);
+    // Registrar log de la actualización
+    await saveLog('update', newIdNumber || idNumber, `User updated successfully.`);
   } catch (error: any) {
     console.error('Error updating user:', error);
 
