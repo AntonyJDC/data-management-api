@@ -16,6 +16,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // Connect to MongoDB
 connectDB();
 
+// Save logs to database
 async function saveLog(action: string, idNumber?: string, message?: string, meta?: Record<string, any>) {
   try {
     const newLog = new Log({ action, idNumber, message, meta });
@@ -25,9 +26,9 @@ async function saveLog(action: string, idNumber?: string, message?: string, meta
   }
 }
 
-// Create User
-app.put('/:idNumber', async (req: Request, res: Response) => {
-  const { idNumber } = req.params; // Usar idNumber de la ruta
+// Update User
+app.put('/api/update/:idNumber', async (req: Request, res: Response) => {
+  const { idNumber } = req.params;
 
   const {
     idType,
@@ -43,9 +44,16 @@ app.put('/:idNumber', async (req: Request, res: Response) => {
   } = req.body;
 
   try {
-    // Validar si el nuevo idNumber ya existe y no pertenece al usuario actual
+    // Find the current user by idNumber
+    const existingUser = await User.findOne({ idNumber });
+
+    if (!existingUser) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    // Validate if newIdNumber already exists and doesn't belong to the current user
     if (newIdNumber && newIdNumber !== idNumber) {
-      const userExists = await User.exists({ idNumber: newIdNumber });
+      const userExists = await User.exists({ idNumber: newIdNumber, _id: { $ne: existingUser._id } });
       if (userExists) {
         return res.status(409).json({
           message: 'Duplicate entry: ID Number already exists for another user.',
@@ -53,12 +61,12 @@ app.put('/:idNumber', async (req: Request, res: Response) => {
       }
     }
 
-    // Actualizar el usuario
+    // Update the user data
     const updatedUser = await User.findOneAndUpdate(
-      { idNumber }, // Buscar por el idNumber actual
+      { _id: existingUser._id }, // Match by _id of the current user
       {
         idType,
-        idNumber: newIdNumber || idNumber, // Actualizar idNumber si hay uno nuevo
+        idNumber: newIdNumber || idNumber, // Update idNumber if there's a new one
         firstName,
         middleName,
         lastName,
@@ -68,7 +76,7 @@ app.put('/:idNumber', async (req: Request, res: Response) => {
         phone,
         photo,
       },
-      { new: true, runValidators: true } // Devuelve el documento actualizado
+      { new: true, runValidators: true } // Return the updated document and validate fields
     );
 
     if (!updatedUser) {
@@ -80,8 +88,8 @@ app.put('/:idNumber', async (req: Request, res: Response) => {
       data: updatedUser,
     });
 
-    // Registrar log de la actualización
-    await saveLog('update', newIdNumber || idNumber, `User updated successfully.`);
+    // Log the update
+    await saveLog('update', newIdNumber || idNumber, 'User updated successfully.');
   } catch (error: any) {
     console.error('Error updating user:', error);
 
@@ -102,14 +110,12 @@ app.put('/:idNumber', async (req: Request, res: Response) => {
   }
 });
 
-
 // Fallback for undefined routes
 app.use((req: Request, res: Response) => {
   res.status(404).json({ message: 'Not found.' });
 });
 
 // Start server
-
 const PORT = process.env.PORT || 3004;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}.`);
